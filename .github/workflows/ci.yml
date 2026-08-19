@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: npm test -- --ci --passWithNoTests
+
+      - name: Build
+        run: npm run build
+        env:
+          # Dummy values for build — real values set in Vercel dashboard
+          DATABASE_URL: "postgresql://user:pass@localhost:5432/test?sslmode=require"
+          DIRECT_URL: "postgresql://user:pass@localhost:5432/test?sslmode=require"
+          INNGEST_SIGNING_KEY: "signkey-test-placeholder"
+          INNGEST_EVENT_KEY: "placeholder"
+          NEXT_PUBLIC_APP_URL: "http://localhost:3000"

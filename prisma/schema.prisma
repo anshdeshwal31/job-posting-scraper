@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  source      String
+  externalId  String
+  title       String
+  company     String
+  location    String?
+  description String?
+  url         String
+  postedAt    DateTime?
+  fetchedAt   DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([source, externalId])
+  @@index([source])
+  @@index([createdAt])
+}
+
+model IngestionRun {
+  id           String     @id @default(cuid())
+  source       String
+  scenario     String?    // null = real source; "429" | "500" | "timeout" | "empty" | "malformed" = sandbox
+  status       RunStatus  @default(QUEUED)
+  startedAt    DateTime   @default(now())
+  completedAt  DateTime?
+  jobsFetched  Int        @default(0)
+  jobsInserted Int        @default(0)
+  duplicates   Int        @default(0)
+  rejected     Int        @default(0)
+  retries      Int        @default(0)
+  errorMessage String?
+  inngestRunId String?
+
+  events IngestionEvent[]
+
+  @@index([source, status])
+  @@index([startedAt])
+}
+
+model IngestionEvent {
+  id        String       @id @default(cuid())
+  runId     String
+  run       IngestionRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  type      EventType
+  message   String
+  createdAt DateTime     @default(now())
+
+  @@index([runId])
+}
+
+enum RunStatus {
+  QUEUED
+  RUNNING
+  SUCCESS
+  RECOVERED
+  FAILED
+}
+
+enum EventType {
+  INFO
+  WARNING
+  RETRY
+  ERROR
+}
