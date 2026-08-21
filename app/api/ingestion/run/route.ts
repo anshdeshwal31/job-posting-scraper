@@ -22,10 +22,28 @@ export async function POST(req: NextRequest) {
     const source: SourceType = body.source ?? "remoteok";
     const scenario: SandboxScenario | undefined = body.scenario;
 
-    // ── Concurrent ingestion guard ──────────────────────────────────────────
+    const sourceName =
+      source === "sandbox" ? `sandbox-${scenario ?? "normal"}` : source;
+
+    // ── 1. Clear stale/orphaned runs older than 2 minutes ─────────────────────
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+    await prisma.ingestionRun.updateMany({
+      where: {
+        source: sourceName,
+        status: { in: [RunStatus.QUEUED, RunStatus.RUNNING] },
+        startedAt: { lt: twoMinutesAgo },
+      },
+      data: {
+        status: RunStatus.FAILED,
+        completedAt: new Date(),
+        errorMessage: "Run timed out or was abandoned",
+      },
+    });
+
+    // ── 2. Concurrent ingestion guard ──────────────────────────────────────────
     const existingRun = await prisma.ingestionRun.findFirst({
       where: {
-        source: source === "sandbox" ? `sandbox-${scenario ?? "normal"}` : source,
+        source: sourceName,
         status: { in: [RunStatus.QUEUED, RunStatus.RUNNING] },
       },
       orderBy: { startedAt: "desc" },
@@ -43,10 +61,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ── Create new QUEUED run ────────────────────────────────────────────────
-    const sourceName =
-      source === "sandbox" ? `sandbox-${scenario ?? "normal"}` : source;
-
+    // ── 3. Create new QUEUED run ────────────────────────────────────────────────
     const run = await prisma.ingestionRun.create({
       data: {
         source: sourceName,
@@ -55,16 +70,25 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // ── Fire Inngest event ───────────────────────────────────────────────────
+    // ── 4. Fire Inngest event & trigger background engine execution ─────────────
     const options: IngestionOptions = {
       source,
       scenario,
       runId: run.id,
     };
 
-    await inngest.send({
+    // Fire Inngest event
+    inngest.send({
       name: "ingest/jobs.run",
       data: options,
+    }).catch((err) => {
+      console.warn("[Inngest Event Warning]", err);
+    });
+
+    // Asynchronous background execution (ensures completion even without active Inngest worker)
+    const { runIngestionEngine } = await import("@/src/ingestion/engine");
+    runIngestionEngine(options).catch((err) => {
+      console.error("[Background Ingestion Engine Error]", err);
     });
 
     return NextResponse.json(
