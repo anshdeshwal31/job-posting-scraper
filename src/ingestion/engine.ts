@@ -72,6 +72,9 @@ export async function runIngestionEngine(
     retries = r;
   } catch (err) {
     fetchError = err as Error;
+    if (err instanceof RetryExhaustedError) {
+      retries = Math.max(0, err.attempts - 1);
+    }
     await prisma.ingestionEvent.create({
       data: {
         runId,

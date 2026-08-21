@@ -88,7 +88,9 @@ export function ManualIngestionButton({ onRunStarted }: ManualIngestionButtonPro
         >
           <span>{result.alreadyRunning ? "⏳" : "✓"}</span>
           <div>
-            <div style={{ fontWeight: 600 }}>{result.message}</div>
+            <div style={{ fontWeight: 600 }}>
+              {result.alreadyRunning ? "An ingestion is already running. Tracking active run..." : result.message}
+            </div>
             <div style={{ fontSize: "12px", opacity: 0.8, fontFamily: "monospace", marginTop: 2 }}>
               Run ID: {result.runId} · Status: {result.status}
             </div>

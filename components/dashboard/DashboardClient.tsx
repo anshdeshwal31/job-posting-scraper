@@ -60,17 +60,17 @@ export function DashboardClient() {
     fetchAll();
   }, [fetchAll]);
 
-  // Auto-refresh every 5s when there's an active run, else every 30s
+  // Auto-refresh every 1s when there's an active run, else every 30s
   useEffect(() => {
     const hasActiveRun = stats?.activeRun != null;
-    const intervalMs = hasActiveRun ? 5_000 : 30_000;
+    const intervalMs = hasActiveRun ? 1_000 : 30_000;
     const id = setInterval(() => fetchAll(), intervalMs);
     return () => clearInterval(id);
   }, [stats?.activeRun, fetchAll]);
 
   const handleRunStarted = useCallback(() => {
     // Immediately poll for updates
-    setTimeout(() => fetchAll(), 1500);
+    fetchAll();
   }, [fetchAll]);
 
   const handlePageChange = useCallback((page: number) => {

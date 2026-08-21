@@ -21,18 +21,17 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const source: SourceType = body.source ?? "remoteok";
     const scenario: SandboxScenario | undefined = body.scenario;
-    const force: boolean = Boolean(body.force);
 
     const sourceName =
       source === "sandbox" ? `sandbox-${scenario ?? "normal"}` : source;
 
-    // ── 1. Clear stale/orphaned runs older than 30 seconds ─────────────────────
-    const thirtySecondsAgo = new Date(Date.now() - 30 * 1000);
+    // ── 1. Clear stale/orphaned runs older than 2 minutes ─────────────────────
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
     await prisma.ingestionRun.updateMany({
       where: {
         source: sourceName,
         status: { in: [RunStatus.QUEUED, RunStatus.RUNNING] },
-        startedAt: { lt: thirtySecondsAgo },
+        startedAt: { lt: twoMinutesAgo },
       },
       data: {
         status: RunStatus.FAILED,
@@ -41,22 +40,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // ── 2. Force override option ────────────────────────────────────────────────
-    if (force) {
-      await prisma.ingestionRun.updateMany({
-        where: {
-          source: sourceName,
-          status: { in: [RunStatus.QUEUED, RunStatus.RUNNING] },
-        },
-        data: {
-          status: RunStatus.FAILED,
-          completedAt: new Date(),
-          errorMessage: "Cancelled by forced ingestion trigger",
-        },
-      });
-    }
-
-    // ── 3. Concurrent ingestion guard ──────────────────────────────────────────
+    // ── 2. Concurrent ingestion guard ──────────────────────────────────────────
     const existingRun = await prisma.ingestionRun.findFirst({
       where: {
         source: sourceName,
