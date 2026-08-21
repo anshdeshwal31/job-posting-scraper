@@ -84,6 +84,7 @@ export class RemoteOKSource implements JobSource {
         url: String(item["url"] ?? `https://remoteok.com/remote-jobs/${item["slug"] ?? item["id"]}`),
         postedAt: item["date"] ? String(item["date"]) : undefined,
       }))
-      .filter((j) => j.externalId && j.title && j.company && j.url);
+      .filter((j) => j.externalId && j.title && j.company && j.url)
+      .slice(0, 30); // Cap at 30 items per ingestion batch
   }
 }
