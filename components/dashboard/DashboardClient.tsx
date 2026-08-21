@@ -90,98 +90,78 @@ export function DashboardClient() {
   }
 
   return (
-    <>
-      {/* ── Header ──────────────────────────────────────────────────────── */}
-      <header className="header">
-        <div className="header-inner">
-          <div className="header-logo">
-            <div className="logo-icon">⚡</div>
-            <span className="logo-text">Job Ingestion</span>
-            <span className="logo-badge">Acdyon Assessment</span>
-          </div>
-          <div className="header-right">
-            <span className="text-xs text-muted">
-              Last refresh: {lastRefresh.toLocaleTimeString()}
-            </span>
-            <button
-              className="btn btn-ghost btn-sm"
-              onClick={() => fetchAll()}
-              aria-label="Refresh dashboard"
-            >
-              ↺ Refresh
-            </button>
-          </div>
+    <div className="split-layout">
+      {/* ── Left Column (Controls & Context) ──────────────────────── */}
+      <div className="split-left">
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "24px" }}>
+          <h1 className="page-title" style={{ fontSize: "24px", letterSpacing: "-0.04em", margin: 0 }}>
+            RESILIENT INGESTION ENGINE
+          </h1>
+          <span className="pill badge-success" style={{ fontSize: "10px", padding: "2px 8px" }}>
+            <span className="health-dot health-healthy" style={{ width: 6, height: 6, display: "inline-block" }} />
+            Neon DB: Connected
+          </span>
         </div>
-      </header>
 
-      <main className="main-content">
-        {/* ── Page Header ─────────────────────────────────────────────── */}
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">Engineering Dashboard</h1>
-            <p className="page-desc">
-              Real-time visibility into the job ingestion pipeline — health, runs, failures, and stored jobs.
-            </p>
-          </div>
+        <p style={{ color: "var(--text-secondary)", fontSize: "14px", lineHeight: 1.6, marginBottom: "40px" }}>
+          A production-grade pull-based ingestion pipeline featuring automated backoff resilience,
+          schema validation, and exact-match deduplication. Engineered to handle chaotic remote sources 
+          without dropping valid data.
+        </p>
+
+        <div style={{ marginBottom: "48px" }}>
           <ManualIngestionButton onRunStarted={handleRunStarted} />
         </div>
 
-        {/* ── Overview ────────────────────────────────────────────────── */}
-        {stats && (
-          <>
-            <div className="section-header">
-              <span className="section-title">System Overview</span>
-            </div>
-            <OverviewPanel stats={stats} />
-          </>
-        )}
-
-        <div className="section-divider" />
-
-        {/* ── Recent Runs ─────────────────────────────────────────────── */}
-        <div className="section-header">
-          <span className="section-title">Recent Ingestion Runs</span>
-          <span className="section-subtitle">Last 10 runs</span>
-        </div>
-        <RunsTable runs={runs} />
-
-        <div className="section-divider" />
-
-        {/* ── Jobs ────────────────────────────────────────────────────── */}
-        <div className="section-header">
-          <span className="section-title">Ingested Jobs</span>
-          {jobsData && (
-            <span className="section-subtitle">
-              {jobsData.pagination.total.toLocaleString()} total
-            </span>
-          )}
-        </div>
-        {jobsData ? (
-          <JobsTable
-            jobs={jobsData.jobs}
-            total={jobsData.pagination.total}
-            page={jobsData.pagination.page}
-            pages={jobsData.pagination.pages}
-            onPageChange={handlePageChange}
-          />
-        ) : (
-          <div className="card">
-            <div className="empty-state">
-              <span className="empty-icon">💼</span>
-              <span className="empty-title">No jobs yet</span>
-            </div>
-          </div>
-        )}
-
-        <div className="section-divider" />
-
-        {/* ── Failure Testing ─────────────────────────────────────────── */}
-        <div className="section-header">
-          <span className="section-title">Failure Testing</span>
-          <span className="section-subtitle">Engineering demonstration controls</span>
-        </div>
         <FailureTestingPanel onRunStarted={handleRunStarted} />
-      </main>
-    </>
+
+        {stats && <OverviewPanel stats={stats} />}
+      </div>
+
+      {/* ── Right Column (Live Telemetry & Jobs) ────────────────────── */}
+      <div className="split-right">
+        <div className="split-right-scrollable">
+          
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+            <span style={{ fontSize: "11px", textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>
+              Live Telemetry Feed
+            </span>
+            <span className="text-xs text-muted">
+              Auto-refreshing {stats?.activeRun ? "(1s)" : "(30s)"} · Last: {lastRefresh.toLocaleTimeString()}
+            </span>
+          </div>
+
+          <RunsTable runs={runs} />
+
+          <div style={{ marginTop: "40px" }}>
+            <details className="card" style={{ padding: 0, overflow: "hidden", border: "1px solid var(--border)" }} open>
+              <summary className="collapsible-header">
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text-primary)" }}>Ingested Normalized Jobs</span>
+                  {jobsData && <span className="pill">{jobsData.pagination.total.toLocaleString()} records</span>}
+                </div>
+                <span style={{ color: "var(--text-muted)", fontSize: "12px" }}>Toggle View</span>
+              </summary>
+              <div className="collapsible-content" style={{ padding: "0 20px 20px" }}>
+                {jobsData ? (
+                  <JobsTable
+                    jobs={jobsData.jobs}
+                    total={jobsData.pagination.total}
+                    page={jobsData.pagination.page}
+                    pages={jobsData.pagination.pages}
+                    onPageChange={handlePageChange}
+                  />
+                ) : (
+                  <div className="empty-state">
+                    <span className="empty-icon">💼</span>
+                    <span className="empty-title">No jobs yet</span>
+                  </div>
+                )}
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
