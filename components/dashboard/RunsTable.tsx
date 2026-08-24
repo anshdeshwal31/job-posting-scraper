@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import type { IngestionRun, IngestionEvent, RunStatus } from "@prisma/client";
+import { RunStatus } from "@prisma/client";
+import type { IngestionRun, IngestionEvent } from "@prisma/client";
 
 type RunWithEvents = IngestionRun & { events: IngestionEvent[] };
 
@@ -60,18 +61,16 @@ export function RunsTable({ runs }: RunsTableProps) {
           let statusPillClass = "pill ";
           let statusText = run.status.toString();
           
-          if (run.status === "COMPLETED") {
+          if (run.status === RunStatus.SUCCESS) {
             statusPillClass += "badge-success";
             statusText = "200 SUCCESS";
-          } else if (run.status === "FAILED") {
-            statusPillClass += "badge-failed";
-          } else if (run.status === "QUEUED" || run.status === "RUNNING") {
-            statusPillClass += "badge-running";
-          }
-          
-          if (run.status === "COMPLETED" && run.retries > 0) {
+          } else if (run.status === RunStatus.RECOVERED) {
             statusPillClass = "pill badge-recovered";
             statusText = "RECOVERED";
+          } else if (run.status === RunStatus.FAILED) {
+            statusPillClass += "badge-failed";
+          } else if (run.status === RunStatus.QUEUED || run.status === RunStatus.RUNNING) {
+            statusPillClass += "badge-running";
           }
 
           return (
@@ -97,11 +96,11 @@ export function RunsTable({ runs }: RunsTableProps) {
               ))}
 
               {/* Summary line if completed or failed */}
-              {(run.status === "COMPLETED" || run.status === "FAILED") && (
+              {(run.status === RunStatus.SUCCESS || run.status === RunStatus.RECOVERED || run.status === RunStatus.FAILED) && (
                 <div className="console-line">
                   <span className="console-time">[{formatTimeOnly(run.completedAt || new Date())}]</span>
-                  <span className="console-content" style={{ color: run.status === "COMPLETED" ? "#9ece6a" : "#f7768e" }}>
-                    {run.status === "COMPLETED" ? "✔" : "✘"} RUN_{run.status} — 
+                  <span className="console-content" style={{ color: run.status === RunStatus.FAILED ? "#f7768e" : "#9ece6a" }}>
+                    {run.status === RunStatus.FAILED ? "✘" : "✔"} RUN_{run.status} — 
                     fetched={run.jobsFetched} 
                     {" "}inserted={run.jobsInserted} 
                     {" "}rejected={run.rejected}
